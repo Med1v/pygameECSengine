@@ -5,11 +5,14 @@ from mycolors import *
 
 class Entity(object):
     def __init__(self, eid, manager):
+        # each entity has unique name (id) link to system/component manager
+        # and dict of components for components interaction
         self.id = eid
         self.manager = manager
         self.cmp_dict = {}
 
     def addComponent(self, c):
+        # assign local variables and pass it to manager
         self.cmp_dict[type(c)] = c
         c.e = self
         self.manager.newEC(c)

@@ -1,25 +1,28 @@
 from mycolors import *
 import time
 
-
+# abstract system base class
 class BasicSystem(object):
     def __init__(self, pg):
         self.pg = pg
-        self.cemap = {}
         import components as cmps
         self.cmps = cmps
 
-    def addComponent(self, cmp, ent):
-        self.cemap[cmp] = ent
 
-
+# Basically a key event listener
 class HandlerSystem(BasicSystem):
     def __init__(self, pg):
         super(HandlerSystem, self).__init__(pg)
+        # dict of key:f(): if 'key' ressed then run function f() on the player
         self.keyMap = {}
+
+        # profiler variables
         self.keyProfilerNum = {}
         self.keyProfilerSpeed = {}
         self.speed_profiler = False
+
+        # global keybinds don't have parameters
+        # player specific have playerCtrl component as param
 
         def onEscape():
             return 'ext'
@@ -29,6 +32,8 @@ class HandlerSystem(BasicSystem):
             print("Enter pressed")
             return 'ent'
         self.addKey(pg.K_RETURN, onEnter)
+
+        # pla - PLayer Action
 
         def plaStop(pl):
             pl.direction = 0
@@ -58,6 +63,7 @@ class HandlerSystem(BasicSystem):
             print(pl.e.id + ": throw")
             return 'skl'
 
+        # maps player's actions to correspondin functions
         self.actionMap = {
             'up': plaUp,
             'right': plaRight,
@@ -67,21 +73,17 @@ class HandlerSystem(BasicSystem):
             'throw': plaThrow
         }
 
-    def initPlayerKeyBinds(self, c):
-        print("binding this player controls:")
-        print(c.keyBinds)
-        # for action, key in c.keyBinds.items():
-        #     self.addKey(key, self.actionMap[action])
-
+    # maps global key to keyMap
     def addKey(self, k, f):
         self.keyMap[k] = f
         self.keyProfilerNum[k] = 0
         self.keyProfilerSpeed[k] = []
 
+    # if movement key wasn't pressed then stop player
     def reset(self, pl):
         pl.direction = 0
-        # print(f"reset called")
 
+    # called in main loop
     def update(self, cmp_dict):
         res = 1
 
@@ -90,21 +92,28 @@ class HandlerSystem(BasicSystem):
         # player keybinds
         for c in cmp_dict[self.cmps.PlayerCtrl]:
             total_mov = 0
+            # go through custom player keybinds
             for actionstr, k in c.keyBinds.items():
                 if keys[k]:
+                    starttime = time.clock()  # for perfomance measure
                     ares = self.actionMap[actionstr](c)
                     if ares == 'mov': total_mov += 1
+                    # profiler (perfomance measure stuff)
+                    self.keyProfilerNum[k] += 1
+                    if self.speed_profiler:
+                        self.keyProfilerSpeed[k].append(time.clock() - starttime)
+            # stop player if no movement was commanded
             if total_mov == 0: self.reset(c)
 
         # global keybinds
         for k, action in self.keyMap.items():
             if keys[k]:
                 starttime = time.clock()
+                # global keybinds define state of the app (like exit/pause)
                 res = action()
                 self.keyProfilerNum[k] += 1
                 if self.speed_profiler:
                     self.keyProfilerSpeed[k].append(time.clock() - starttime)
-                    # print(f"ran {k} handler {self.keyProfilerNum[k]} times with res: {res}; it took total {sum(self.keyProfilerSpeed[k])}s")
 
         return res
 
@@ -120,6 +129,10 @@ class PhysicsSystem(BasicSystem):
         for obj_type, comp_list in cmp_dict.items():
             for c in comp_list:
                 pos = c.e.cmp_dict[self.cmps.Position]
+
+                # Iterate through players phisics movement
+                # BasicMovement component
+                # if component has BasicMovement component and attached to a player
                 if obj_type == self.cmps.BasicMovement and self.cmps.PlayerCtrl in c.e.cmp_dict:
                     direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
                     if direction == 1:
@@ -143,11 +156,15 @@ class RenderSystem(BasicSystem):
         self.cmps = cmps
 
     def update(self, cmp_dict):
+        # clear frame with background color
         self.screen.fill(BLACK)
 
         for _, comp_list in cmp_dict.items():
             for obj in comp_list:
-                pos = obj.e.cmp_dict[self.cmps.Position]
+                # no position - no render
+                try: pos = obj.e.cmp_dict[self.cmps.Position]
+                except KeyError: continue
+                # render here
                 obj.render_shape(self.screen, pos.x, pos.y)
 
         self.pg.display.flip()

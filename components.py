@@ -3,6 +3,8 @@ from systems import *
 
 class Component(object):
     def __init__(self, systems):
+        # each component has list of system types that must work on component
+        # and link to entity to perform component interaction
         self.systems = systems
         self.e = None
 
