@@ -92,7 +92,6 @@ class HandlerSystem(BasicSystem):
                     ares = self.actionMap[actionstr](c)
                     if ares == 'mov': total_mov += 1
 
-
         # global keybinds
         for k, action in self.keyMap.items():
             if keys[k]:
@@ -135,14 +134,30 @@ class PhysicsSystem(BasicSystem):
 
     def inertiaUpdate(self, pos, c):
         sign = lambda x: (1, -1)[x < 0]
-        # friction
-        fr_change = c.friction/c.weight
+        # friction absolute
+        # fr_change = c.friction/c.weight
 
-        fr_speedx = sign(c.speedx)*fr_change
-        fr_speedy = sign(c.speedy)*fr_change
+        # if for making so friction applies only to net 0 axis
+        # fr_speedx = sign(c.speedx)*fr_change  # if (c.forces[1] - c.forces[3]) == 0 else 0
+        # fr_speedy = sign(c.speedy)*fr_change  # if (c.forces[2] - c.forces[0]) == 0 else 0
 
-        c.speedx -= fr_speedx if (abs(fr_speedx) < abs(c.speedx)) else c.speedx
-        c.speedy -= fr_speedy if (abs(fr_speedy) < abs(c.speedy)) else c.speedy
+        # c.speedx -= fr_speedx if (abs(fr_speedx) < abs(c.speedx)) else c.speedx
+        # c.speedy -= fr_speedy if (abs(fr_speedy) < abs(c.speedy)) else c.speedy
+
+        # friction force
+        # direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+        if (c.forces[2] - c.forces[0]) == 0 and c.speedy != 0:
+            amount = c.friction if c.friction/c.weight < abs(c.speedy) else abs(c.speedy*c.weight)
+            if sign(c.speedy) > 0:
+                c.forces[0] += amount
+            else:
+                c.forces[2] += amount
+        if (c.forces[1] - c.forces[3]) == 0 and c.speedx != 0:
+            amount = c.friction if c.friction/c.weight < abs(c.speedx) else abs(c.speedx*c.weight)
+            if sign(c.speedx) > 0:
+                c.forces[3] += amount
+            else:
+                c.forces[1] += amount
 
         # force
         c.speedx += (c.forces[1] - c.forces[3])/c.weight

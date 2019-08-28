@@ -35,7 +35,7 @@ def init(mng):
     player1.addComponent(PlayerCtrl(keyBinds))
     player1.addComponent(Transform(200, 200))
     # friction, power, weight, maxspeed, speedx=0, speedy=0
-    player1.addComponent(InertiaMovement(PLAYER_FRICTION, PLAYER_FRICTION + 30, 150, 10))
+    player1.addComponent(InertiaMovement(PLAYER_FRICTION*2, 30, 150, 10))
     player1.addComponent(Rectangle(BLUE, 50))
 
     elist.append(player1)
@@ -53,7 +53,7 @@ def init(mng):
     player2.addComponent(Transform(300, 300))
     # player2.addComponent(BasicMovement(5))
     # friction, power, weight, maxspeed, speedx=0, speedy=0
-    player2.addComponent(InertiaMovement(PLAYER_FRICTION, PLAYER_FRICTION + 30, 25, 10))
+    player2.addComponent(InertiaMovement(PLAYER_FRICTION, 30, 25, 10))
     player2.addComponent(Rectangle(RED, 50))
 
     elist.append(player2)
