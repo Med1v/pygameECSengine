@@ -1,5 +1,5 @@
 from mycolors import *
-import time
+import math
 
 # abstract system base class
 class BasicSystem(object):
@@ -12,14 +12,9 @@ class BasicSystem(object):
 # Basically a key event listener
 class HandlerSystem(BasicSystem):
     def __init__(self, pg):
-        super(HandlerSystem, self).__init__(pg)
+        super().__init__(pg)
         # dict of key:f(): if 'key' ressed then run function f() on the player
         self.keyMap = {}
-
-        # profiler variables
-        self.keyProfilerNum = {}
-        self.keyProfilerSpeed = {}
-        self.speed_profiler = False
 
         # global keybinds don't have parameters
         # player specific have playerCtrl component as param
@@ -36,23 +31,23 @@ class HandlerSystem(BasicSystem):
         # pla - PLayer Action
 
         def plaStop(pl):
-            pl.direction = 0
+            pl.direction = [0, 0, 0, 0]
             return 'stp'
 
         def plaUp(pl):
-            pl.direction = 1
+            pl.direction[0] = 1
             return 'mov'
 
         def plaRight(pl):
-            pl.direction = 2
+            pl.direction[1] = 1
             return 'mov'
 
         def plaDown(pl):
-            pl.direction = 3
+            pl.direction[2] = 1
             return 'mov'
 
         def plaLeft(pl):
-            pl.direction = 4
+            pl.direction[3] = 1
             return 'mov'
 
         def plaDash(pl):
@@ -76,12 +71,10 @@ class HandlerSystem(BasicSystem):
     # maps global key to keyMap
     def addKey(self, k, f):
         self.keyMap[k] = f
-        self.keyProfilerNum[k] = 0
-        self.keyProfilerSpeed[k] = []
 
     # if movement key wasn't pressed then stop player
     def reset(self, pl):
-        pl.direction = 0
+        pl.direction = [0, 0, 0, 0]
 
     # called in main loop
     def update(self, cmp_dict):
@@ -93,67 +86,123 @@ class HandlerSystem(BasicSystem):
         for c in cmp_dict[self.cmps.PlayerCtrl]:
             total_mov = 0
             # go through custom player keybinds
+            self.reset(c)
             for actionstr, k in c.keyBinds.items():
                 if keys[k]:
-                    starttime = time.clock()  # for perfomance measure
                     ares = self.actionMap[actionstr](c)
                     if ares == 'mov': total_mov += 1
-                    # profiler (perfomance measure stuff)
-                    self.keyProfilerNum[k] += 1
-                    if self.speed_profiler:
-                        self.keyProfilerSpeed[k].append(time.clock() - starttime)
-            # stop player if no movement was commanded
-            if total_mov == 0: self.reset(c)
+
 
         # global keybinds
         for k, action in self.keyMap.items():
             if keys[k]:
-                starttime = time.clock()
                 # global keybinds define state of the app (like exit/pause)
                 res = action()
-                self.keyProfilerNum[k] += 1
-                if self.speed_profiler:
-                    self.keyProfilerSpeed[k].append(time.clock() - starttime)
 
         return res
 
 
-class PhysicsSystem(BasicSystem):
+class BotSystem(BasicSystem):
     def __init__(self, pg):
-        super(PhysicsSystem, self).__init__(pg)
-
-        import components as cmps
-        self.cmps = cmps
+        super().__init__(pg)
 
     def update(self, cmp_dict):
-        for obj_type, comp_list in cmp_dict.items():
-            for c in comp_list:
-                pos = c.e.cmp_dict[self.cmps.Position]
+        pass
 
-                # Iterate through players phisics movement
-                # BasicMovement component
-                # if component has BasicMovement component and attached to a player
-                if obj_type == self.cmps.BasicMovement and self.cmps.PlayerCtrl in c.e.cmp_dict:
-                    direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
-                    if direction == 1:
-                        pos.y -= c.speed
-                    elif direction == 2:
-                        pos.x += c.speed
-                    elif direction == 3:
-                        pos.y += c.speed
-                    elif direction == 4:
-                        pos.x -= c.speed
+
+class PhysicsSystem(BasicSystem):
+    def __init__(self, pg):
+        super().__init__(pg)
+
+    def playerMovement(self, pos, c):
+        direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+        if direction[0] == 1:
+            pos.y -= c.speed
+        if direction[1] == 1:
+            pos.x += c.speed
+        if direction[2] == 1:
+            pos.y += c.speed
+        if direction[3] == 1:
+            pos.x -= c.speed
+
+    def inertiaMovement(self, pos, c):
+        direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+
+        c.forces = [x * c.power for x in direction]
+
+    def registerCollision(self, pos, c):
+        pass
+
+    def inertiaUpdate(self, pos, c):
+        sign = lambda x: (1, -1)[x < 0]
+        # friction
+        fr_change = c.friction/c.weight
+
+        fr_speedx = sign(c.speedx)*fr_change
+        fr_speedy = sign(c.speedy)*fr_change
+
+        c.speedx -= fr_speedx if (abs(fr_speedx) < abs(c.speedx)) else c.speedx
+        c.speedy -= fr_speedy if (abs(fr_speedy) < abs(c.speedy)) else c.speedy
+
+        # force
+        c.speedx += (c.forces[1] - c.forces[3])/c.weight
+        c.speedy += (c.forces[2] - c.forces[0])/c.weight
+        c.forces = [0, 0, 0, 0]
+
+        # max speed
+        curr_speed = math.sqrt(c.speedx**2 + c.speedy**2)
+        if curr_speed > c.maxspeed:
+            if c.speedy == 0 or c.speedx == 0:
+                c.speedx = sign(c.speedx) * c.maxspeed if abs(c.speedx) > c.maxspeed else 0
+                c.speedy = sign(c.speedy) * c.maxspeed if abs(c.speedy) > c.maxspeed else 0
+            else:
+                angle = math.atan(abs(c.speedy/c.speedx))
+                c.speedx = sign(c.speedx) * math.cos(angle) * c.maxspeed
+                c.speedy = sign(c.speedy) * math.sin(angle) * c.maxspeed
+
+        # position
+        pos.x += c.speedx
+        pos.y += c.speedy
+
+    def getPos(self, c):
+        # if component's entity doesn't have transform it is irrelevant to physicsSystem
+        try: return c.e.cmp_dict[self.cmps.Transform]
+        except KeyError: None
+
+    def update(self, cmp_dict):
+        # Iterate through each component type in desired order
+        if self.cmps.BasicMovement in cmp_dict:
+            for c in cmp_dict[self.cmps.BasicMovement]:
+                pos = self.getPos(c)
+                if pos is None: continue
+                if self.cmps.PlayerCtrl in c.e.cmp_dict:
+                    self.playerMovement(pos, c)
+
+        if self.cmps.InertiaMovement in cmp_dict:
+            for c in cmp_dict[self.cmps.InertiaMovement]:
+                pos = self.getPos(c)
+                if pos is None: continue
+                self.inertiaMovement(pos, c)
+
+        if self.cmps.CollisionBox in cmp_dict:
+            for c in cmp_dict[self.cmps.CollisionBox]:
+                pos = self.getPos(c)
+                if pos is None: continue
+                self.registerCollision(pos, c)
+
+        if self.cmps.InertiaMovement in cmp_dict:
+            for c in cmp_dict[self.cmps.InertiaMovement]:
+                pos = self.getPos(c)
+                if pos is None: continue
+                self.inertiaUpdate(pos, c)
 
         return 1
 
 
 class RenderSystem(BasicSystem):
     def __init__(self, pg, screen):
-        super(RenderSystem, self).__init__(pg)
+        super().__init__(pg)
         self.screen = screen
-
-        import components as cmps
-        self.cmps = cmps
 
     def update(self, cmp_dict):
         # clear frame with background color
@@ -161,8 +210,8 @@ class RenderSystem(BasicSystem):
 
         for _, comp_list in cmp_dict.items():
             for obj in comp_list:
-                # no position - no render
-                try: pos = obj.e.cmp_dict[self.cmps.Position]
+                # no Transform - no render
+                try: pos = obj.e.cmp_dict[self.cmps.Transform]
                 except KeyError: continue
                 # render here
                 obj.render_shape(self.screen, pos.x, pos.y)
