@@ -137,27 +137,27 @@ class PhysicsSystem(BasicSystem):
         # friction absolute
         # fr_change = c.friction/c.weight
 
-        # if for making so friction applies only to net 0 axis
-        # fr_speedx = sign(c.speedx)*fr_change  # if (c.forces[1] - c.forces[3]) == 0 else 0
-        # fr_speedy = sign(c.speedy)*fr_change  # if (c.forces[2] - c.forces[0]) == 0 else 0
+        # # if for making so friction applies only to net 0 axis
+        # fr_speedx = sign(c.speedx)*fr_change if (c.forces[1] - c.forces[3]) == 0 else 0
+        # fr_speedy = sign(c.speedy)*fr_change if (c.forces[2] - c.forces[0]) == 0 else 0
 
         # c.speedx -= fr_speedx if (abs(fr_speedx) < abs(c.speedx)) else c.speedx
         # c.speedy -= fr_speedy if (abs(fr_speedy) < abs(c.speedy)) else c.speedy
 
         # friction force
-        # direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
-        if (c.forces[2] - c.forces[0]) == 0 and c.speedy != 0:
+        direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+        if c.speedy != 0:
             amount = c.friction if c.friction/c.weight < abs(c.speedy) else abs(c.speedy*c.weight)
-            if sign(c.speedy) > 0:
-                c.forces[0] += amount
+            if c.speedy > 0:
+                c.forces[0] += amount if not direction[2] else 0
             else:
-                c.forces[2] += amount
-        if (c.forces[1] - c.forces[3]) == 0 and c.speedx != 0:
+                c.forces[2] += amount if not direction[0] else 0
+        if c.speedx != 0:
             amount = c.friction if c.friction/c.weight < abs(c.speedx) else abs(c.speedx*c.weight)
-            if sign(c.speedx) > 0:
-                c.forces[3] += amount
+            if c.speedx > 0:
+                c.forces[3] += amount if not direction[1] else 0
             else:
-                c.forces[1] += amount
+                c.forces[1] += amount if not direction[3] else 0
 
         # force
         c.speedx += (c.forces[1] - c.forces[3])/c.weight
