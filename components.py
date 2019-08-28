@@ -44,8 +44,8 @@ class CollisionBox(Component):
 
 class PlayerCtrl(Component):
     def __init__(self, keyBindsMap):
-        super().__init__([HandlerSystem])
-        # 0-no; 1-up; 2-right; 3-down; 4-left
+        super().__init__([HandlerSystem, BotSystem])
+        # up; right; down; left
         self.keyBinds = keyBindsMap
         self.direction = [0, 0, 0, 0]
 
@@ -53,7 +53,7 @@ class PlayerCtrl(Component):
 class ChaseBotCtrl(Component):
     def __init__(self):
         super().__init__([BotSystem])
-        # 0-no; 1-up; 2-right; 3-down; 4-left
+        # up; right; down; left
         self.direction = [0, 0, 0, 0]
 
 

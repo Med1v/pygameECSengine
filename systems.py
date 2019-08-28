@@ -7,6 +7,9 @@ class BasicSystem(object):
         self.pg = pg
         import components as cmps
         self.cmps = cmps
+        self.ctrl_list = [cmps.PlayerCtrl, cmps.ChaseBotCtrl]
+
+        self.sign = lambda x: (1, -1)[x < 0]
 
 
 # Basically a key event listener
@@ -105,8 +108,37 @@ class BotSystem(BasicSystem):
     def __init__(self, pg):
         super().__init__(pg)
 
+    def chaseBotUpdate(self, pl_list, c):
+        # find closest player
+        try: bot_pos = c.e.cmp_dict[self.cmps.Transform]
+        except KeyError: return
+        pl_pos = None
+        curr_d = 999999
+        for p in pl_list:
+            try: pos = p.e.cmp_dict[self.cmps.Transform]
+            except KeyError: continue
+
+            d = math.sqrt((bot_pos.x - pos.x)**2 + (bot_pos.y - pos.y)**2)
+            if d < curr_d:
+                pl_pos = pos
+                curr_d = d
+        if pl_pos is None: return
+
+        # calculate movement
+        xdif = bot_pos.x - pl_pos.x
+        ydif = bot_pos.y - pl_pos.y
+
+        c.direction = [
+            1 if self.sign(ydif) > 0 else 0,  # up
+            1 if self.sign(xdif) < 0 else 0,  # right
+            1 if self.sign(ydif) < 0 else 0,  # down
+            1 if self.sign(xdif) > 0 else 0  # left
+        ]
+
     def update(self, cmp_dict):
-        pass
+        if self.cmps.ChaseBotCtrl in cmp_dict:
+            for c in cmp_dict[self.cmps.ChaseBotCtrl]:
+                self.chaseBotUpdate(cmp_dict[self.cmps.PlayerCtrl], c)
 
 
 class PhysicsSystem(BasicSystem):
@@ -125,27 +157,32 @@ class PhysicsSystem(BasicSystem):
             pos.x -= c.speed
 
     def inertiaMovement(self, pos, c):
-        direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+        for cp in self.ctrl_list:
+            try: ctrl = c.e.cmp_dict[cp]
+            except KeyError: continue
 
-        c.forces = [x * c.power for x in direction]
+            direction = ctrl.direction
+            c.forces = [x * c.power for x in direction]
 
     def registerCollision(self, pos, c):
         pass
 
     def inertiaUpdate(self, pos, c):
-        sign = lambda x: (1, -1)[x < 0]
         # friction absolute
         # fr_change = c.friction/c.weight
 
         # # if for making so friction applies only to net 0 axis
-        # fr_speedx = sign(c.speedx)*fr_change if (c.forces[1] - c.forces[3]) == 0 else 0
-        # fr_speedy = sign(c.speedy)*fr_change if (c.forces[2] - c.forces[0]) == 0 else 0
+        # fr_speedx = self.sign(c.speedx)*fr_change if (c.forces[1] - c.forces[3]) == 0 else 0
+        # fr_speedy = self.sign(c.speedy)*fr_change if (c.forces[2] - c.forces[0]) == 0 else 0
 
         # c.speedx -= fr_speedx if (abs(fr_speedx) < abs(c.speedx)) else c.speedx
         # c.speedy -= fr_speedy if (abs(fr_speedy) < abs(c.speedy)) else c.speedy
 
         # friction force
-        direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+        for cp in self.ctrl_list:
+            try: ctrl = c.e.cmp_dict[cp]
+            except KeyError: continue
+        direction = ctrl.direction
         # if not standing still
         if c.speedy != 0:
             # friction must be reduced if friction force is bigger than momentum
@@ -172,12 +209,12 @@ class PhysicsSystem(BasicSystem):
         curr_speed = math.sqrt(c.speedx**2 + c.speedy**2)
         if curr_speed > c.maxspeed:
             if c.speedy == 0 or c.speedx == 0:
-                c.speedx = sign(c.speedx) * c.maxspeed if abs(c.speedx) > c.maxspeed else 0
-                c.speedy = sign(c.speedy) * c.maxspeed if abs(c.speedy) > c.maxspeed else 0
+                c.speedx = self.sign(c.speedx) * c.maxspeed if abs(c.speedx) > c.maxspeed else 0
+                c.speedy = self.sign(c.speedy) * c.maxspeed if abs(c.speedy) > c.maxspeed else 0
             else:
                 angle = math.atan(abs(c.speedy/c.speedx))
-                c.speedx = sign(c.speedx) * math.cos(angle) * c.maxspeed
-                c.speedy = sign(c.speedy) * math.sin(angle) * c.maxspeed
+                c.speedx = self.sign(c.speedx) * math.cos(angle) * c.maxspeed
+                c.speedy = self.sign(c.speedy) * math.sin(angle) * c.maxspeed
 
         # position
         pos.x += c.speedx

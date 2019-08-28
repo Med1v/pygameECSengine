@@ -5,7 +5,7 @@ from systems import *
 from components import *
 import entity
 
-swidths, sheight = 800, 800
+swidths, sheight = 1700, 800
 FPS_LIMIT = 120
 
 
@@ -37,6 +37,7 @@ def run():
     ecsmng = ECManger()
 
     ecsmng.addSys(HandlerSystem(pygame))
+    ecsmng.addSys(BotSystem(pygame))
     ecsmng.addSys(PhysicsSystem(pygame))
     ecsmng.addSys(RenderSystem(pygame, screen))
     # init entities and add components to them
