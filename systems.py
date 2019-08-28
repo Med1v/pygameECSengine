@@ -146,12 +146,16 @@ class PhysicsSystem(BasicSystem):
 
         # friction force
         direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+        # if not standing still
         if c.speedy != 0:
-            amount = c.friction if c.friction/c.weight < abs(c.speedy) else abs(c.speedy*c.weight)
+            # friction must be reduced if friction force is bigger than momentum
+            amount = c.friction if c.friction < abs(c.speedy*c.weight) else abs(c.speedy*c.weight)
+            # apply force depending on player's movement direction and input
             if c.speedy > 0:
                 c.forces[0] += amount if not direction[2] else 0
             else:
                 c.forces[2] += amount if not direction[0] else 0
+        # same for other axis
         if c.speedx != 0:
             amount = c.friction if c.friction/c.weight < abs(c.speedx) else abs(c.speedx*c.weight)
             if c.speedx > 0:
