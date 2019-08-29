@@ -128,6 +128,16 @@ class BotSystem(BasicSystem):
         xdif = bot_pos.x - pl_pos.x
         ydif = bot_pos.y - pl_pos.y
 
+        # less precise, more human and yet awkward behaviour
+        # getabs = lambda n, m: abs(n) if m == 0 else abs(n/m) # division by 0 handling
+        # c.direction = [
+        #     1 if self.sign(ydif) > 0 and getabs(ydif, xdif) > 0.5 else 0,  # up
+        #     1 if self.sign(xdif) < 0 and getabs(xdif, ydif) > 0.5 else 0,  # right
+        #     1 if self.sign(ydif) < 0 and getabs(ydif, xdif) > 0.5 else 0,  # down
+        #     1 if self.sign(xdif) > 0 and getabs(xdif, ydif) > 0.5 else 0  # left
+        # ]
+
+        # precise bot-like behaviour
         c.direction = [
             1 if self.sign(ydif) > 0 else 0,  # up
             1 if self.sign(xdif) < 0 else 0,  # right
@@ -145,8 +155,8 @@ class PhysicsSystem(BasicSystem):
     def __init__(self, pg):
         super().__init__(pg)
 
-    def playerMovement(self, pos, c):
-        direction = c.e.cmp_dict[self.cmps.PlayerCtrl].direction
+    def playerMovement(self, ctrl, pos, c):
+        direction = c.e.cmp_dict[ctrl].direction
         if direction[0] == 1:
             pos.y -= c.speed
         if direction[1] == 1:
@@ -168,16 +178,6 @@ class PhysicsSystem(BasicSystem):
         pass
 
     def inertiaUpdate(self, pos, c):
-        # friction absolute
-        # fr_change = c.friction/c.weight
-
-        # # if for making so friction applies only to net 0 axis
-        # fr_speedx = self.sign(c.speedx)*fr_change if (c.forces[1] - c.forces[3]) == 0 else 0
-        # fr_speedy = self.sign(c.speedy)*fr_change if (c.forces[2] - c.forces[0]) == 0 else 0
-
-        # c.speedx -= fr_speedx if (abs(fr_speedx) < abs(c.speedx)) else c.speedx
-        # c.speedy -= fr_speedy if (abs(fr_speedy) < abs(c.speedy)) else c.speedy
-
         # friction force
         for cp in self.ctrl_list:
             try: ctrl = c.e.cmp_dict[cp]
@@ -231,8 +231,9 @@ class PhysicsSystem(BasicSystem):
             for c in cmp_dict[self.cmps.BasicMovement]:
                 pos = self.getPos(c)
                 if pos is None: continue
-                if self.cmps.PlayerCtrl in c.e.cmp_dict:
-                    self.playerMovement(pos, c)
+                for ctrl in self.ctrl_list:
+                    if ctrl in c.e.cmp_dict:
+                        self.playerMovement(ctrl, pos, c)
 
         if self.cmps.InertiaMovement in cmp_dict:
             for c in cmp_dict[self.cmps.InertiaMovement]:
@@ -264,13 +265,12 @@ class RenderSystem(BasicSystem):
         # clear frame with background color
         self.screen.fill(BLACK)
 
-        for _, comp_list in cmp_dict.items():
-            for obj in comp_list:
-                # no Transform - no render
-                try: pos = obj.e.cmp_dict[self.cmps.Transform]
-                except KeyError: continue
-                # render here
-                obj.render_shape(self.screen, pos.x, pos.y)
+        for c in cmp_dict[self.cmps.Square]:
+            # no Transform - no render
+            try: pos = c.e.cmp_dict[self.cmps.Transform]
+            except KeyError: continue
+            # render here
+            c.render_shape(self.screen, pos.x - c.size/2, pos.y - c.size/2)
 
         self.pg.display.flip()
         return 1

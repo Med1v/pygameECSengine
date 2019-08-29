@@ -57,7 +57,7 @@ class ChaseBotCtrl(Component):
         self.direction = [0, 0, 0, 0]
 
 
-class Rectangle(Component):
+class Square(Component):
     def __init__(self, color, size):
         super().__init__([RenderSystem])
         self.color = color
