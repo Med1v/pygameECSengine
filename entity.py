@@ -19,7 +19,8 @@ class Entity(object):
 
 
 def init(mng):
-    PLAYER_FRICTION = 20
+    PLAYER_FRICTION = 5
+    MAX_SPEED = 12
 
     elist = []
 
@@ -35,7 +36,8 @@ def init(mng):
     player1.addComponent(PlayerCtrl(keyBinds))
     player1.addComponent(Transform(200, 200))
     # friction, power, weight, maxspeed, speedx=0, speedy=0
-    player1.addComponent(InertiaMovement(PLAYER_FRICTION, 30, 25, 10))
+    player1.addComponent(InertiaMovement(PLAYER_FRICTION, 10, 60, MAX_SPEED))
+    player1.addComponent(CollisionBox(50, 50))
     player1.addComponent(Square(BLUE, 50))
 
     elist.append(player1)
@@ -53,7 +55,8 @@ def init(mng):
     player2.addComponent(Transform(200, 400))
     # player2.addComponent(BasicMovement(5))
     # friction, power, weight, maxspeed, speedx=0, speedy=0
-    player2.addComponent(InertiaMovement(PLAYER_FRICTION, 30, 25, 10))
+    player2.addComponent(InertiaMovement(PLAYER_FRICTION, 10, 25, MAX_SPEED))
+    player2.addComponent(CollisionBox(50, 50))
     player2.addComponent(Square(WHITE, 50))
 
     elist.append(player2)
@@ -62,7 +65,16 @@ def init(mng):
     bot1.addComponent(ChaseBotCtrl())
     bot1.addComponent(Transform(500, 400))
     # bot1.addComponent(BasicMovement(5))
-    bot1.addComponent(InertiaMovement(PLAYER_FRICTION*2, 30, 150, 10))
+    bot1.addComponent(InertiaMovement(PLAYER_FRICTION*2, 10, 150, MAX_SPEED))
+    bot1.addComponent(CollisionBox(50, 50))
     bot1.addComponent(Square(RED, 50))
+
+    bot2 = Entity('bot1', mng)
+    bot2.addComponent(Transform(1000, 400))
+    bot2.addComponent(Square(RED, 50))
+    bot2.addComponent(InertiaMovement(PLAYER_FRICTION*2, 10, 150, MAX_SPEED))
+    bot2.addComponent(ChaseBotCtrl())
+
+    elist.append(bot2)
 
     return elist

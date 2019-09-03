@@ -6,7 +6,7 @@ from components import *
 import entity
 
 swidths, sheight = 1700, 800
-FPS_LIMIT = 120
+FPS_LIMIT = 15
 
 
 class ECManger(object):
@@ -38,6 +38,7 @@ def run():
 
     ecsmng.addSys(HandlerSystem(pygame))
     ecsmng.addSys(BotSystem(pygame))
+    ecsmng.addSys(CollisionSystem(pygame, [swidths, sheight]))
     ecsmng.addSys(PhysicsSystem(pygame))
     ecsmng.addSys(RenderSystem(pygame, screen))
     # init entities and add components to them
@@ -60,7 +61,7 @@ def run():
         # if at least 1 of the systems called on exit then stop main loop
         if 'ext' in sysres: game_over = True
         # fps limiter
-        pygame.time.Clock().tick(FPS_LIMIT)
+        # pygame.time.Clock().tick(FPS_LIMIT)
 
     pygame.quit()
 

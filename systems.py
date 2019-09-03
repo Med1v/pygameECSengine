@@ -1,5 +1,6 @@
 from mycolors import *
 import math
+import time
 
 # abstract system base class
 class BasicSystem(object):
@@ -7,10 +8,21 @@ class BasicSystem(object):
         self.pg = pg
         import components as cmps
         self.cmps = cmps
+
         self.ctrl_list = [cmps.PlayerCtrl, cmps.ChaseBotCtrl]
-
         self.sign = lambda x: (1, -1)[x < 0]
+        self.get_time = lambda: time.time() * 100  # time scale
+        self.last_time = -1
+        self.dt = 0
 
+    def updatedt(self):
+        if self.last_time == -1:
+            self.last_time = self.get_time()
+            self.dt = 0
+            return
+        curr_time = self.get_time()
+        self.dt = curr_time - self.last_time
+        self.last_time = curr_time
 
 # Basically a key event listener
 class HandlerSystem(BasicSystem):
@@ -151,20 +163,42 @@ class BotSystem(BasicSystem):
                 self.chaseBotUpdate(cmp_dict[self.cmps.PlayerCtrl], c)
 
 
+class CollisionSystem(BasicSystem):
+    def __init__(self, pg, dimensions):
+        super().__init__(pg)
+        # self.grid = [[[] for _ in range(dimensions[1])] for _ in range(dimensions[0])]
+
+    def collide(self, cm, co):
+        print(f"{cm.e.id} collided with {co.e.id}")
+
+    def isIncollision(self, c):
+        pass
+
+    def update(self, cmp_dict):
+        if self.cmps.CollisionBox in cmp_dict:
+            for c in cmp_dict[self.cmps.CollisionBox]:
+                pos = self.getPos(c)
+                if pos is None: continue
+                co = self.isIncollision(c)
+                if co is not None:
+                    self.collide(c, co)
+
+
 class PhysicsSystem(BasicSystem):
     def __init__(self, pg):
         super().__init__(pg)
 
     def playerMovement(self, ctrl, pos, c):
         direction = c.e.cmp_dict[ctrl].direction
+        speed = c.speed * self.dt
         if direction[0] == 1:
-            pos.y -= c.speed
+            pos.y -= speed
         if direction[1] == 1:
-            pos.x += c.speed
+            pos.x += speed
         if direction[2] == 1:
-            pos.y += c.speed
+            pos.y += speed
         if direction[3] == 1:
-            pos.x -= c.speed
+            pos.x -= speed
 
     def inertiaMovement(self, pos, c):
         for cp in self.ctrl_list:
@@ -172,10 +206,11 @@ class PhysicsSystem(BasicSystem):
             except KeyError: continue
 
             direction = ctrl.direction
-            c.forces = [x * c.power for x in direction]
-
-    def registerCollision(self, pos, c):
-        pass
+            # calculate new force depending on direction pressed and
+            # divided by the ammount of directions that force gets applied to
+            # so diagonal movement isn't 2 times stronger i total
+            dirsum = 1 if sum(direction) == 0 else sum(direction)
+            c.forces = [x * (c.power / dirsum) for x in direction]
 
     def inertiaUpdate(self, pos, c):
         # friction force
@@ -194,7 +229,7 @@ class PhysicsSystem(BasicSystem):
                 c.forces[2] += amount if not direction[0] else 0
         # same for other axis
         if c.speedx != 0:
-            amount = c.friction if c.friction/c.weight < abs(c.speedx) else abs(c.speedx*c.weight)
+            amount = c.friction if c.friction < abs(c.speedx*c.weight) else abs(c.speedx*c.weight)
             if c.speedx > 0:
                 c.forces[3] += amount if not direction[1] else 0
             else:
@@ -217,8 +252,8 @@ class PhysicsSystem(BasicSystem):
                 c.speedy = self.sign(c.speedy) * math.sin(angle) * c.maxspeed
 
         # position
-        pos.x += c.speedx
-        pos.y += c.speedy
+        pos.x += c.speedx * self.dt
+        pos.y += c.speedy * self.dt
 
     def getPos(self, c):
         # if component's entity doesn't have transform it is irrelevant to physicsSystem
@@ -226,6 +261,7 @@ class PhysicsSystem(BasicSystem):
         except KeyError: None
 
     def update(self, cmp_dict):
+        self.updatedt()
         # Iterate through each component type in desired order
         if self.cmps.BasicMovement in cmp_dict:
             for c in cmp_dict[self.cmps.BasicMovement]:
@@ -241,18 +277,13 @@ class PhysicsSystem(BasicSystem):
                 if pos is None: continue
                 self.inertiaMovement(pos, c)
 
-        if self.cmps.CollisionBox in cmp_dict:
-            for c in cmp_dict[self.cmps.CollisionBox]:
-                pos = self.getPos(c)
-                if pos is None: continue
-                self.registerCollision(pos, c)
-
         if self.cmps.InertiaMovement in cmp_dict:
             for c in cmp_dict[self.cmps.InertiaMovement]:
                 pos = self.getPos(c)
                 if pos is None: continue
                 self.inertiaUpdate(pos, c)
 
+        self.last_time = self.get_time()
         return 1
 
 
