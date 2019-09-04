@@ -271,55 +271,58 @@ class PhysicsSystem(BasicSystem):
             try: ctrl = c.e.cmp_dict[cp]
             except KeyError: continue
 
-            direction = ctrl.direction
+            d = ctrl.direction
             # calculate new force depending on direction pressed and
             # divided by the ammount of directions that force gets applied to
             # so diagonal movement isn't 2 times stronger in total
-            dirsum = 1 if sum(direction) == 0 else sum(direction)
-            c.forces = [x * (c.power / dirsum) for x in direction]
+            dsum = 1 if sum(d) == 0 else sum(d)
+            forcex = d[1] * c.power - d[3] * c.power
+            forcey = d[2] * c.power - d[0] * c.power
+            c.forces = [c.forces[0] + forcex/dsum, c.forces[1] + forcey/dsum]
 
     def inertiaUpdate(self, pos, c):
         # friction force
-        for cp in self.ctrl_list:
-            try: ctrl = c.e.cmp_dict[cp]
-            except KeyError: continue
-        direction = ctrl.direction
-        # if not standing still
-        if c.speedy != 0:
-            # friction must be reduced if friction force is bigger than momentum
-            amount = c.friction if c.friction < abs(c.speedy*c.mass) else abs(c.speedy*c.mass)
-            # apply force depending on player's movement direction and input
-            if c.speedy > 0:
-                c.forces[0] += amount if not direction[2] else 0
-            else:
-                c.forces[2] += amount if not direction[0] else 0
-        # same for other axis
-        if c.speedx != 0:
-            amount = c.friction if c.friction < abs(c.speedx*c.mass) else abs(c.speedx*c.mass)
-            if c.speedx > 0:
-                c.forces[3] += amount if not direction[1] else 0
-            else:
-                c.forces[1] += amount if not direction[3] else 0
+        # for cp in self.ctrl_list:
+        #     try: ctrl = c.e.cmp_dict[cp]
+        #     except KeyError: continue
+
+        #     direction = ctrl.direction
+        #     # if not standing still
+        #     if c.speed[1] != 0:
+        #         # friction must be reduced if friction force is bigger than momentum
+        #         amount = c.friction if c.friction < abs(c.speed[1]*c.mass) else abs(c.speed[1]*c.mass)
+        #         # apply force depending on player's movement direction and input
+        #         if c.speed[1] > 0:
+        #             c.forces[0] += amount if not direction[2] else 0
+        #         else:
+        #             c.forces[0] += -amount if not direction[0] else 0
+        #     # same for other axis
+        #     if c.speed[0] != 0:
+        #         amount = c.friction if c.friction < abs(c.speed[0]*c.mass) else abs(c.speed[0]*c.mass)
+        #         if c.speed[0] > 0:
+        #             c.forces[1] += amount if not direction[1] else 0
+        #         else:
+        #             c.forces[1] += -amount if not direction[3] else 0
 
         # force
-        c.speedx += (c.forces[1] - c.forces[3])/c.mass
-        c.speedy += (c.forces[2] - c.forces[0])/c.mass
+        c.speed[0] += c.forces[0]/c.mass
+        c.speed[1] += c.forces[1]/c.mass
         c.forces = [0, 0, 0, 0]
 
         # max speed
-        curr_speed = math.sqrt(c.speedx**2 + c.speedy**2)
+        curr_speed = math.sqrt(c.speed[0]**2 + c.speed[1]**2)
         if curr_speed > c.maxspeed:
-            if c.speedy == 0 or c.speedx == 0:
-                c.speedx = self.sign(c.speedx) * c.maxspeed if abs(c.speedx) > c.maxspeed else 0
-                c.speedy = self.sign(c.speedy) * c.maxspeed if abs(c.speedy) > c.maxspeed else 0
+            if c.speed[1] == 0 or c.speed[0] == 0:
+                c.speed[0] = self.sign(c.speed[0]) * c.maxspeed if abs(c.speed[0]) > c.maxspeed else 0
+                c.speed[1] = self.sign(c.speed[1]) * c.maxspeed if abs(c.speed[1]) > c.maxspeed else 0
             else:
-                angle = math.atan(abs(c.speedy/c.speedx))
-                c.speedx = self.sign(c.speedx) * math.cos(angle) * c.maxspeed
-                c.speedy = self.sign(c.speedy) * math.sin(angle) * c.maxspeed
+                angle = math.atan(abs(c.speed[1]/c.speed[0]))
+                c.speed[0] = self.sign(c.speed[0]) * math.cos(angle) * c.maxspeed
+                c.speed[1] = self.sign(c.speed[1]) * math.sin(angle) * c.maxspeed
 
         # position
-        pos.x += c.speedx * self.dt
-        pos.y += c.speedy * self.dt
+        pos.x += c.speed[0] * self.dt
+        pos.y += c.speed[1] * self.dt
 
     def update(self, cmp_dict):
         self.updatedt()

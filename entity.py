@@ -22,8 +22,6 @@ def init(mng):
     PLAYER_FRICTION = 5
     MAX_SPEED = 12
 
-    elist = []
-
     player1 = Entity('player1', mng)
     keyBinds = {
         'up': pygame.K_w,

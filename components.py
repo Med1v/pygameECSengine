@@ -24,14 +24,13 @@ class BasicMovement(Component):
 
 
 class InertiaMovement(Component):
-    def __init__(self, friction, power, mass, maxspeed, speedx=0, speedy=0):
+    def __init__(self, friction, power, mass, maxspeed, speed=[0, 0]):
         super().__init__([PhysicsSystem])
         self.friction = friction
-        self.weight = mass
+        self.mass = mass
         self.power = power
-        self.forces = [0, 0, 0, 0]  # up; right; down; left
-        self.speedx = speedx
-        self.speedy = speedy
+        self.forces = [0, 0]  # x, y
+        self.speed = speed
         self.maxspeed = maxspeed  # ?
 
 
