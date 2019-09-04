@@ -24,10 +24,10 @@ class BasicMovement(Component):
 
 
 class InertiaMovement(Component):
-    def __init__(self, friction, power, weight, maxspeed, speedx=0, speedy=0):
+    def __init__(self, friction, power, mass, maxspeed, speedx=0, speedy=0):
         super().__init__([PhysicsSystem])
         self.friction = friction
-        self.weight = weight
+        self.weight = mass
         self.power = power
         self.forces = [0, 0, 0, 0]  # up; right; down; left
         self.speedx = speedx
@@ -37,9 +37,9 @@ class InertiaMovement(Component):
 
 class CollisionBox(Component):
     def __init__(self, width, height):
-        super().__init__([PhysicsSystem])
-        self.width = width
-        self.height = height
+        super().__init__([CollisionSystem])
+        self.w = width
+        self.h = height
 
 
 class PlayerCtrl(Component):

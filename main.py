@@ -38,8 +38,8 @@ def run():
 
     ecsmng.addSys(HandlerSystem(pygame))
     ecsmng.addSys(BotSystem(pygame))
-    ecsmng.addSys(CollisionSystem(pygame, [swidths, sheight]))
     ecsmng.addSys(PhysicsSystem(pygame))
+    ecsmng.addSys(CollisionSystem(pygame, [swidths, sheight]))
     ecsmng.addSys(RenderSystem(pygame, screen))
     # init entities and add components to them
     entity.init(ecsmng)

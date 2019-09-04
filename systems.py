@@ -11,7 +11,7 @@ class BasicSystem(object):
 
         self.ctrl_list = [cmps.PlayerCtrl, cmps.ChaseBotCtrl]
         self.sign = lambda x: (1, -1)[x < 0]
-        self.get_time = lambda: time.time() * 100  # time scale
+        self.get_time = lambda: time.time() * 10  # time scale
         self.last_time = -1
         self.dt = 0
 
@@ -23,6 +23,11 @@ class BasicSystem(object):
         curr_time = self.get_time()
         self.dt = curr_time - self.last_time
         self.last_time = curr_time
+
+    def getPos(self, c):
+        # if component's entity doesn't have transform it is irrelevant to physicsSystem
+        try: return c.e.cmp_dict[self.cmps.Transform]
+        except KeyError: None
 
 # Basically a key event listener
 class HandlerSystem(BasicSystem):
@@ -140,7 +145,7 @@ class BotSystem(BasicSystem):
         xdif = bot_pos.x - pl_pos.x
         ydif = bot_pos.y - pl_pos.y
 
-        # less precise, more human and yet awkward behaviour
+        # less precise, more awkward and yet realistic behaviour
         # getabs = lambda n, m: abs(n) if m == 0 else abs(n/m) # division by 0 handling
         # c.direction = [
         #     1 if self.sign(ydif) > 0 and getabs(ydif, xdif) > 0.5 else 0,  # up
@@ -166,22 +171,83 @@ class BotSystem(BasicSystem):
 class CollisionSystem(BasicSystem):
     def __init__(self, pg, dimensions):
         super().__init__(pg)
-        # self.grid = [[[] for _ in range(dimensions[1])] for _ in range(dimensions[0])]
+        self.CELL_SIZE = 50
+        # self.grid = [[None for _ in range(dimensions[1] / CELL_SIZE)] for _ in range(dimensions[0] / CELL_SIZE)]
+        self.grid = {}
+        self.cmp_occ = {}  # component occupancy
 
-    def collide(self, cm, co):
-        print(f"{cm.e.id} collided with {co.e.id}")
+    def collide(self, c, el, d):
+        # print(f"{c.e.id} collided with {el.e.id}")
+        # el.e.cmp_dict[self.cmps.Square].color = (0, 255, 0)
+        if self.cmps.InertiaMovement not in c.e.cmp_dict: return
+        cinertia = c.e.cmp_dict[self.cmps.InertiaMovement]
+        # xforce = cinertia.mass * ()
+        # el.forces = []
 
-    def isIncollision(self, c):
-        pass
+    def doCollision(self, c, pos):
+        # BUG: applies 2 times for both components
+        res = []
+
+        for p in self.cmp_occ[c]:
+            for el in self.grid[p]:
+                # don't collide with yourself
+                if c == el: continue
+                # get element position
+                elpos = self.getPos(el)
+                if elpos is None: continue
+
+                # calculate collisions
+                cleft = pos.x - c.w/2
+                cright = pos.x + c.w/2
+                ctop = pos.y - c.h/2
+                cbottom = pos.y + c.h/2
+
+                elleft = elpos.x - el.w/2
+                elright = elpos.x + el.w/2
+                eltop = elpos.y - el.h/2
+                elbottom = elpos.y + el.h/2
+
+                left_col = 1 if elleft < cleft < elright else 0
+                right_col = 1 if elleft < cright < elright else 0
+                top_col = 1 if eltop < ctop < elbottom else 0
+                bottom_col = 1 if eltop < cbottom < elbottom else 0
+
+                # if collision occures collide (TODO: respectively to direction)
+                if left_col or right_col or top_col or bottom_col:
+                    self.collide(c, el, [top_col, right_col, bottom_col, left_col])
+
+        return res
+
+    def updateGrid(self, cmp_list):
+        # TODO: refresh previous grid instead of creating new
+        # TODO: temporal coherence
+        self.grid = {}
+        for c in cmp_list:
+            pos = self.getPos(c)
+            if pos is None: continue
+
+            # calculate collision box corners
+            dw = c.w/2; dh = c.h/2
+            tl = (int((pos.x - dw)/self.CELL_SIZE), int((pos.y - dh)/self.CELL_SIZE))
+            tr = (int((pos.x + dw)/self.CELL_SIZE), int((pos.y - dh)/self.CELL_SIZE))
+            bl = (int((pos.x - dw)/self.CELL_SIZE), int((pos.y + dh)/self.CELL_SIZE))
+            br = (int((pos.x + dw)/self.CELL_SIZE), int((pos.y + dh)/self.CELL_SIZE))
+            occupy_points = set([tl, tr, bl, br])
+
+            # add component to collision grid and component occupancy dict
+            for op in occupy_points:
+                try: self.grid[op].append(c)
+                except KeyError: self.grid[op] = [c]
+                self.cmp_occ[c] = occupy_points
 
     def update(self, cmp_dict):
+        # extend CollisionBox from general Collision class? or updateGrid([[cmp, cmp], [cmp, cmp]])
         if self.cmps.CollisionBox in cmp_dict:
+            self.updateGrid(cmp_dict[self.cmps.CollisionBox])
             for c in cmp_dict[self.cmps.CollisionBox]:
                 pos = self.getPos(c)
                 if pos is None: continue
-                co = self.isIncollision(c)
-                if co is not None:
-                    self.collide(c, co)
+                self.doCollision(c, pos)
 
 
 class PhysicsSystem(BasicSystem):
@@ -208,7 +274,7 @@ class PhysicsSystem(BasicSystem):
             direction = ctrl.direction
             # calculate new force depending on direction pressed and
             # divided by the ammount of directions that force gets applied to
-            # so diagonal movement isn't 2 times stronger i total
+            # so diagonal movement isn't 2 times stronger in total
             dirsum = 1 if sum(direction) == 0 else sum(direction)
             c.forces = [x * (c.power / dirsum) for x in direction]
 
@@ -221,7 +287,7 @@ class PhysicsSystem(BasicSystem):
         # if not standing still
         if c.speedy != 0:
             # friction must be reduced if friction force is bigger than momentum
-            amount = c.friction if c.friction < abs(c.speedy*c.weight) else abs(c.speedy*c.weight)
+            amount = c.friction if c.friction < abs(c.speedy*c.mass) else abs(c.speedy*c.mass)
             # apply force depending on player's movement direction and input
             if c.speedy > 0:
                 c.forces[0] += amount if not direction[2] else 0
@@ -229,15 +295,15 @@ class PhysicsSystem(BasicSystem):
                 c.forces[2] += amount if not direction[0] else 0
         # same for other axis
         if c.speedx != 0:
-            amount = c.friction if c.friction < abs(c.speedx*c.weight) else abs(c.speedx*c.weight)
+            amount = c.friction if c.friction < abs(c.speedx*c.mass) else abs(c.speedx*c.mass)
             if c.speedx > 0:
                 c.forces[3] += amount if not direction[1] else 0
             else:
                 c.forces[1] += amount if not direction[3] else 0
 
         # force
-        c.speedx += (c.forces[1] - c.forces[3])/c.weight
-        c.speedy += (c.forces[2] - c.forces[0])/c.weight
+        c.speedx += (c.forces[1] - c.forces[3])/c.mass
+        c.speedy += (c.forces[2] - c.forces[0])/c.mass
         c.forces = [0, 0, 0, 0]
 
         # max speed
@@ -254,11 +320,6 @@ class PhysicsSystem(BasicSystem):
         # position
         pos.x += c.speedx * self.dt
         pos.y += c.speedy * self.dt
-
-    def getPos(self, c):
-        # if component's entity doesn't have transform it is irrelevant to physicsSystem
-        try: return c.e.cmp_dict[self.cmps.Transform]
-        except KeyError: None
 
     def update(self, cmp_dict):
         self.updatedt()

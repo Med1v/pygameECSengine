@@ -34,13 +34,11 @@ def init(mng):
         'throw': pygame.K_b
     }
     player1.addComponent(PlayerCtrl(keyBinds))
-    player1.addComponent(Transform(200, 200))
+    player1.addComponent(Transform(200, 197))
     # friction, power, weight, maxspeed, speedx=0, speedy=0
     player1.addComponent(InertiaMovement(PLAYER_FRICTION, 10, 60, MAX_SPEED))
     player1.addComponent(CollisionBox(50, 50))
     player1.addComponent(Square(BLUE, 50))
-
-    elist.append(player1)
 
     player2 = Entity('player2', mng)
     keyBinds = {
@@ -59,22 +57,17 @@ def init(mng):
     player2.addComponent(CollisionBox(50, 50))
     player2.addComponent(Square(WHITE, 50))
 
-    elist.append(player2)
+    # bot1 = Entity('bot1', mng)
+    # bot1.addComponent(ChaseBotCtrl())
+    # bot1.addComponent(Transform(500, 400))
+    # # bot1.addComponent(BasicMovement(5))
+    # bot1.addComponent(InertiaMovement(PLAYER_FRICTION*2, 10, 150, MAX_SPEED))
+    # bot1.addComponent(CollisionBox(50, 50))
+    # bot1.addComponent(Square(RED, 50))
 
-    bot1 = Entity('bot1', mng)
-    bot1.addComponent(ChaseBotCtrl())
-    bot1.addComponent(Transform(500, 400))
-    # bot1.addComponent(BasicMovement(5))
-    bot1.addComponent(InertiaMovement(PLAYER_FRICTION*2, 10, 150, MAX_SPEED))
-    bot1.addComponent(CollisionBox(50, 50))
-    bot1.addComponent(Square(RED, 50))
-
-    bot2 = Entity('bot1', mng)
-    bot2.addComponent(Transform(1000, 400))
-    bot2.addComponent(Square(RED, 50))
-    bot2.addComponent(InertiaMovement(PLAYER_FRICTION*2, 10, 150, MAX_SPEED))
-    bot2.addComponent(ChaseBotCtrl())
-
-    elist.append(bot2)
-
-    return elist
+    # bot2 = Entity('bot2', mng)
+    # bot2.addComponent(ChaseBotCtrl())
+    # bot2.addComponent(Transform(1000, 400))
+    # bot2.addComponent(InertiaMovement(PLAYER_FRICTION*2, 10, 150, MAX_SPEED))
+    # bot2.addComponent(CollisionBox(50, 50))
+    # bot2.addComponent(Square(RED, 50))
